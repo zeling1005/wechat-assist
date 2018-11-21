@@ -7,7 +7,10 @@ import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 import java.sql.SQLException;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +20,7 @@ import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -25,12 +29,14 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.UIManager;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.zeling.wa.dao.CommonDao;
 import com.zeling.wa.utils.HttpUtils;
 import com.zeling.wa.utils.SecretUtils;
+import com.zeling.wa.utils.Utils;
 import com.zeling.wa.vo.ZlOrderVO;
 
 /**
@@ -42,8 +48,10 @@ public class WechatAssist extends JFrame {
 
 	private static final long serialVersionUID = -627984564109834680L;
 	
-	private static final String ORDER_BASE_URL = "http://weixin.3f2mt.cn/weixin/tj";
-	private static final String QUERY_BASE_URL = "http://weixin.3f2mt.cn/weixin/cx";
+	private static final String ORDER_BASE_URL = "http://47.106.156.97/weixin/tj";
+//	private static final String ORDER_BASE_URL = "http://weixin.3f2mt.cn/weixin/tj";
+	private static final String QUERY_BASE_URL = "http://47.106.156.97/weixin/cx";
+//	private static final String QUERY_BASE_URL = "http://weixin.3f2mt.cn/weixin/cx";
 	
 	
 	public WechatAssist() {
@@ -61,7 +69,7 @@ public class WechatAssist extends JFrame {
 		this.add(orderInit());
 		this.add(recordsInit());
 
-		this.setSize(1400, 800);
+		this.setSize(1600, 800);
 		this.setTitle("飞翔微信辅助招代理");
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setVisible(true);
@@ -160,9 +168,19 @@ public class WechatAssist extends JFrame {
 				} else {
 					msg = "数据错误";
 				}
-				values.add(map.get(ZlOrderVO.VPHONE) + ";订单号:" + map.get(ZlOrderVO.VORDER_ID) + ";" + msg);
+				values.add(map.get(ZlOrderVO.TIME) + ";" + map.get(ZlOrderVO.VPHONE) + ";订单号:" 
+						+ map.get(ZlOrderVO.VORDER_ID) + ";" + msg);
 			}
 		}
+		Collections.sort(values, new Comparator<String>() {
+
+			@Override
+			public int compare(String o1, String o2) {
+				String o1Time = o1.split(";")[0];
+				String o2Time = o2.split(";")[0];
+				return o1Time.compareTo(o2Time);
+			}
+		});
 		return values;
 	}
 	
@@ -200,7 +218,7 @@ public class WechatAssist extends JFrame {
 		List<Map<String, String>> zlOrderVOs = null;
 		try {
 			zlOrderVOs = CommonDao.selectH2(ZlOrderVO.TABLE_NAME, new String[] { ZlOrderVO.HID, ZlOrderVO.VPHONE,
-					ZlOrderVO.VORDER_ID, ZlOrderVO.VSTATUS, ZlOrderVO.VSECRET_KEY }, null);
+					ZlOrderVO.VORDER_ID, ZlOrderVO.VSTATUS, ZlOrderVO.VSECRET_KEY, ZlOrderVO.TIME }, null);
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -246,6 +264,15 @@ public class WechatAssist extends JFrame {
 			params.clear();
 		}
 	}
+	
+	// 创建打开文件对话框
+	private JFileChooser createFileChooser() {
+		JFileChooser chooser = new JFileChooser();
+		chooser.setDialogTitle("请选择图片文件...");
+		chooser.addChoosableFileFilter(new FileNameExtensionFilter("常用图片格式", "jpg", "jpeg", "png"));
+		chooser.showOpenDialog(this);
+		return chooser;
+	}
 
 	private JPanel orderInit() {
 		// 个人密钥
@@ -280,22 +307,45 @@ public class WechatAssist extends JFrame {
 		}
 		
 		// 二维码图片
-		JLabel qRCodeImgName = new JLabel("二维码图片");
-		qRCodeImgName.setHorizontalAlignment(JLabel.RIGHT);
+		JButton selectImg = new JButton("选择图片");
+		JPanel selectImgPanel = new JPanel();
+		BoxLayout selectImgBoxLayout = new BoxLayout(selectImgPanel, BoxLayout.LINE_AXIS);
+		selectImgPanel.setLayout(selectImgBoxLayout);
+		selectImgPanel.setComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
+		selectImgPanel.add(selectImg);
+		
 		JTextArea qRCodeImg = new JTextArea();
+		qRCodeImg.setEnabled(false);
 		qRCodeImg.setLineWrap(true);
 		JPanel qRCodeImgPanel = new JPanel(new GridLayout(1, 2, 15, 15));
-		qRCodeImgPanel.add(qRCodeImgName);
+		qRCodeImgPanel.add(selectImgPanel);
 		qRCodeImgPanel.add(qRCodeImg);
 		
+		selectImg.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				File file = createFileChooser().getSelectedFile();
+				qRCodeImg.setText(file.getAbsolutePath());
+			}
+		});
+		
+//		JLabel qRCodeImgName = new JLabel("二维码图片");
+//		qRCodeImgName.setHorizontalAlignment(JLabel.RIGHT);
+//		JTextArea qRCodeImg = new JTextArea();
+//		qRCodeImg.setLineWrap(true);
+//		JPanel qRCodeImgPanel = new JPanel(new GridLayout(1, 2, 15, 15));
+//		qRCodeImgPanel.add(qRCodeImgName);
+//		qRCodeImgPanel.add(qRCodeImg);
+		
 		// 二维码链接
-		JLabel qRCodeLinkName = new JLabel("二维码链接");
-		qRCodeLinkName.setHorizontalAlignment(JLabel.RIGHT);
-		JTextArea qRCodeLink = new JTextArea();
-		qRCodeLink.setLineWrap(true);
-		JPanel qRCodeLinkPanel = new JPanel(new GridLayout(1, 2, 15, 15));
-		qRCodeLinkPanel.add(qRCodeLinkName);
-		qRCodeLinkPanel.add(qRCodeLink);
+//		JLabel qRCodeLinkName = new JLabel("二维码链接");
+//		qRCodeLinkName.setHorizontalAlignment(JLabel.RIGHT);
+//		JTextArea qRCodeLink = new JTextArea();
+//		qRCodeLink.setLineWrap(true);
+//		JPanel qRCodeLinkPanel = new JPanel(new GridLayout(1, 2, 15, 15));
+//		qRCodeLinkPanel.add(qRCodeLinkName);
+//		qRCodeLinkPanel.add(qRCodeLink);
 		
 		// 手机号
 		JLabel phoneNumName = new JLabel("手机号");
@@ -324,6 +374,7 @@ public class WechatAssist extends JFrame {
 			
 			@Override
 			public void actionPerformed(ActionEvent e) {
+				Map<String, String> params = new HashMap<>();
 				StringBuilder url = new StringBuilder(ORDER_BASE_URL);
 				String secretKeyValue = secretKey.getText();
 				if (secretKeyValue == null || secretKeyValue.trim().equals("")) {
@@ -331,21 +382,26 @@ public class WechatAssist extends JFrame {
 					return;
 				}
 				url.append("?my=" + secretKeyValue.trim());
+				params.put("my", secretKeyValue.trim());
 				String phoneValue = phoneNum.getText();
 				if (phoneValue == null || phoneValue.trim().equals("")) {
 					result.setText("请输入手机号");
 					return;
 				}
 				url.append("&sjh=" + phoneValue.trim());
+				params.put("sjh", phoneValue.trim());
 				String qRCodeImgValue = qRCodeImg.getText();
 				if (qRCodeImgValue != null && !qRCodeImgValue.trim().equals("")) {
 					url.append("&tupian=" + qRCodeImgValue.trim());
 				}
-				String qRCodeLinkValue = qRCodeLink.getText();
-				if (qRCodeLinkValue != null && !qRCodeLinkValue.trim().equals("")) {
-					url.append("&lianjie=" + qRCodeLinkValue.trim());
-				}
-				String response = HttpUtils.doGet(url.toString());
+				params.put("tupian", Utils.getImgBase64Str(qRCodeImgValue.trim()));
+//				String qRCodeLinkValue = qRCodeLink.getText();
+//				if (qRCodeLinkValue != null && !qRCodeLinkValue.trim().equals("")) {
+//					url.append("&lianjie=" + qRCodeLinkValue.trim());
+//				}
+
+//				String response = HttpUtils.doGet(url.toString());
+				String response = HttpUtils.doPost(ORDER_BASE_URL, params);
 				JSONObject jsonObject = JSON.parseObject(response);
 				Integer sts = jsonObject.getInteger("sts");
 				if (sts != null && sts == 0) {
@@ -358,8 +414,8 @@ public class WechatAssist extends JFrame {
 				try {
 					CommonDao.insertH2(ZlOrderVO.TABLE_NAME,
 							new String[] { ZlOrderVO.VPHONE, ZlOrderVO.VORDER_ID, ZlOrderVO.VSTATUS,
-									ZlOrderVO.VSECRET_KEY },
-							new String[] { phoneValue.trim(), id.trim(), "Z", secretKeyValue.trim() });
+									ZlOrderVO.VSECRET_KEY, ZlOrderVO.TIME },
+							new String[] { phoneValue.trim(), id.trim(), "Z", secretKeyValue.trim(), Utils.getCurrentDate() });
 				} catch (SQLException e1) {
 					e1.printStackTrace();
 				}
@@ -386,10 +442,10 @@ public class WechatAssist extends JFrame {
 		});
 		
 		// 下单页面
-		JPanel orderMain = new JPanel(new GridLayout(6, 1, 15, 15));
+		JPanel orderMain = new JPanel(new GridLayout(5, 1, 15, 15));
 		orderMain.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 		orderMain.add(secretKeyPanel);
-		orderMain.add(qRCodeLinkPanel);
+//		orderMain.add(qRCodeLinkPanel);
 		orderMain.add(qRCodeImgPanel);
 		orderMain.add(phoneNumPanel);
 		orderMain.add(orderPanel);

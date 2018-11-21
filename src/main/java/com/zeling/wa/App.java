@@ -24,7 +24,8 @@ public class App {
 	public static void init() {
 		// 新建表
 		try {
-			CommonDao.crateTable("zl_order", new String[] {ZlOrderVO.VORDER_ID, ZlOrderVO.VSTATUS, ZlOrderVO.VPHONE, ZlOrderVO.VSECRET_KEY});
+			CommonDao.crateTable(ZlOrderVO.TABLE_NAME, new String[] {ZlOrderVO.VORDER_ID, ZlOrderVO.VSTATUS, ZlOrderVO.VPHONE,
+					ZlOrderVO.VSECRET_KEY, ZlOrderVO.TIME});
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
